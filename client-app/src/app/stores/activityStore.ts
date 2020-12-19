@@ -8,10 +8,8 @@ import { IActivity } from "../models/activity";
 class ActivityStore {
    //observables
     activityRegistray = new Map();
-    activities: IActivity[] = [];
     loadingInitial = false;
-    selectedActivity: IActivity | undefined;
-    editMode = false;
+    activity: IActivity | null = null;
     submitting = false;
     target = '';
 
@@ -48,13 +46,40 @@ class ActivityStore {
         }
     }
 
+    clearActivity = () => {
+        this.activity = null;
+    }
+
+    loadActivity = async(id: string) => {
+        let activtity = this.getActivity(id);
+        if (activtity) {
+            this.activity = activtity;
+        } else {
+            this.loadingInitial = true;
+            try {
+                activtity = await agent.Activities.details(id);
+                runInAction(() => {
+                    this.activity = activtity;
+                    this.loadingInitial = false;
+                })
+            } catch (error) {
+                console.log(error);
+                runInAction(() => {
+                    this.loadingInitial = false;
+                })
+            }
+        }
+    }
+
+    getActivity = (id: string) => {
+        return this.activityRegistray.get(id);
+    }
     createActivity = async (activity: IActivity) => {
         this.submitting = true;
         try {
             await agent.Activities.create(activity);
             runInAction(() => {
                 this.activityRegistray.set(activity.id,activity);
-                this.editMode = false;
                 this.submitting = false;
             });
             
@@ -72,8 +97,7 @@ class ActivityStore {
             await agent.Activities.update(activity);
             runInAction(() => {
                 this.activityRegistray.set(activity.id, activity);
-                this.selectedActivity = activity;
-                this.editMode = false;
+                this.activity = activity;
                 this.submitting = false;
             })
             
@@ -106,29 +130,6 @@ class ActivityStore {
             })
             
         }
-    }
-
-    openCreateForm = () => {
-        this.editMode = true;
-        this.selectedActivity = undefined;
-    }
-
-    openEditForm = (id: string) => {
-        this.selectedActivity = this.activityRegistray.get(id);
-        this.editMode = true;
-    }
-
-    cancelSelectedActivity = () => {
-        this.selectedActivity = undefined;
-    }
-
-    cancelFormOpen = () => {
-        this.editMode = false;
-    }
-
-    selectActivity = (id: string) => {
-        this.selectedActivity = this.activityRegistray.get(id);
-        this.editMode = false;
     }
 }
 
